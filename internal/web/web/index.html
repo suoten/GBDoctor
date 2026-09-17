@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GBDoctor — GB28181 接入诊断医生</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- SVG Sprite：全局图标库 -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="i-stethoscope" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 3v6a4 4 0 0 0 8 0V3"/>
+    <path d="M9 13v3a5 5 0 0 0 10 0v-2"/>
+    <circle cx="19" cy="11" r="2"/>
+  </symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+    <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+    <path d="M21 4v4h-4"/>
+    <path d="M3 20v-4h4"/>
+  </symbol>
+  <symbol id="i-antenna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 7a10 10 0 0 1 14 0"/>
+    <path d="M8 11a5 5 0 0 1 8 0"/>
+    <circle cx="12" cy="15" r="1.5" fill="currentColor"/>
+    <path d="M12 16.5V20"/>
+  </symbol>
+  <symbol id="i-package" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 8l-9-5-9 5 9 5 9-5z"/>
+    <path d="M3 8v8l9 5 9-5V8"/>
+    <path d="M12 13v8"/>
+  </symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M2 12h20"/>
+    <path d="M12 2a15 15 0 0 1 0 20"/>
+    <path d="M12 2a15 15 0 0 0 0 20"/>
+  </symbol>
+  <symbol id="i-clipboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="4" width="12" height="18" rx="2"/>
+    <path d="M9 4V2h6v2"/>
+    <path d="M9 10h6"/>
+    <path d="M9 14h6"/>
+    <path d="M9 18h3"/>
+  </symbol>
+  <symbol id="i-rocket" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 20a3 3 0 0 1-6 0c0-2 3-5 3-5s3 3 3 5z"/>
+    <path d="M12 2c3 3 6 7 6 12v4l-3 3-3-3v-4c0-5-3-9-6-12l3 0z"/>
+    <circle cx="15" cy="9" r="1.5"/>
+  </symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="6" y="6" width="12" height="12" rx="2"/>
+  </symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 7h4l2-3h6l2 3h4v12H3z"/>
+    <circle cx="12" cy="13" r="4"/>
+  </symbol>
+  <symbol id="i-heart-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 8a4 4 0 0 0-8 0 4 4 0 0 0-8 0c0 6 8 10 8 10s8-4 8-10z"/>
+    <path d="M4 12h3l1-2 2 4 1-2h3"/>
+  </symbol>
+  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 6h13"/>
+    <path d="M8 12h13"/>
+    <path d="M8 18h13"/>
+    <circle cx="3.5" cy="6" r="1.5"/>
+    <circle cx="3.5" cy="12" r="1.5"/>
+    <circle cx="3.5" cy="18" r="1.5"/>
+  </symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M12 16v-4"/>
+    <path d="M12 8h.01"/>
+  </symbol>
+  <symbol id="i-video" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="6" width="14" height="12" rx="2"/>
+    <path d="M16 10l6-3v10l-6-3"/>
+  </symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 16V11a6 6 0 0 0-12 0v5l-2 2h16z"/>
+    <path d="M10 20a2 2 0 0 0 4 0"/>
+  </symbol>
+  <symbol id="i-microscope" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 18h12"/>
+    <path d="M9 18l3-6 3 6"/>
+    <path d="M12 12V4l3 2-3 2"/>
+    <circle cx="12" cy="4" r="1"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 13l4 4 10-10"/>
+  </symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 6l12 12"/>
+    <path d="M18 6L6 18"/>
+  </symbol>
+  <symbol id="i-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="9"/>
+  </symbol>
+  <symbol id="i-circle-dot" viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="12" cy="12" r="7"/>
+  </symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 9l6 6 6-6"/>
+  </symbol>
+  <symbol id="i-chevron-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 15l-6-6-6 6"/>
+  </symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 6h18"/>
+    <path d="M8 6V4h8v2"/>
+    <path d="M19 6l-1 14H6L5 6"/>
+  </symbol>
+  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 2H6v20h12V8z"/>
+    <path d="M14 2v6h6"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="11" cy="11" r="8"/>
+    <path d="M21 21l-4.3-4.3"/>
+  </symbol>
+  <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M8 5v14l11-7z"/>
+  </symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    <path d="M17 8l-5-5-5 5"/>
+    <path d="M12 3v12"/>
+  </symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    <path d="M7 10l5 5 5-5"/>
+    <path d="M12 15V3"/>
+  </symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M12 6v6l4 2"/>
+  </symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 6h10"/>
+    <path d="M18 6h2"/>
+    <path d="M4 12h4"/>
+    <path d="M12 12h8"/>
+    <path d="M4 18h12"/>
+    <path d="M20 18h0"/>
+    <circle cx="16" cy="6" r="2"/>
+    <circle cx="10" cy="12" r="2"/>
+    <circle cx="18" cy="18" r="2"/>
+  </symbol>
+</svg>
+
+<!-- 顶部导航 -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <img class="nav-logo-icon" src="/favicon.png" alt="GBDoctor" width="28" height="28" style="border-radius:7px">
+    <span class="logo">GBDoctor</span>
+    <span class="version" id="version">v1.2.0</span>
+    <span class="nav-tag">GB28181 接入诊断医生</span>
+  </div>
+  <div class="nav-status">
+    <span id="sipsim-status" class="status-badge offline">
+      <svg width="14" height="14"><use href="#i-circle"/></svg>
+      平台未启动
+    </span>
+    <span id="rule-count" class="rule-badge">
+      <svg width="14" height="14" style="opacity:.6"><use href="#i-list"/></svg>
+      规则: --
+    </span>
+  </div>
+</nav>
+
+<!-- 主容器 -->
+<div class="main-container">
+
+  <!-- 左侧导航 -->
+  <aside class="sidebar">
+    <button class="nav-item active" data-tab="sipsim" onclick="switchTab('sipsim')">
+      <svg class="nav-icon"><use href="#i-stethoscope"/></svg>
+      <span>体检中心</span>
+    </button>
+    <button class="nav-item" data-tab="selftest" onclick="switchTab('selftest')">
+      <svg class="nav-icon"><use href="#i-refresh"/></svg>
+      <span>本机自检</span>
+    </button>
+    <button class="nav-item" data-tab="platform" onclick="switchTab('platform')">
+      <svg class="nav-icon"><use href="#i-antenna"/></svg>
+      <span>平台侧体检</span>
+    </button>
+    <button class="nav-item" data-tab="pcap" onclick="switchTab('pcap')">
+      <svg class="nav-icon"><use href="#i-package"/></svg>
+      <span>抓包分析</span>
+    </button>
+    <button class="nav-item" data-tab="netdiag" onclick="switchTab('netdiag')">
+      <svg class="nav-icon"><use href="#i-globe"/></svg>
+      <span>网络诊断</span>
+    </button>
+    <button class="nav-item" data-tab="reports" onclick="switchTab('reports')">
+      <svg class="nav-icon"><use href="#i-clipboard"/></svg>
+      <span>历史报告</span>
+    </button>
+    <div class="sidebar-footer">
+      <div class="help-card">
+        <svg width="20" height="20" style="color:var(--primary)"><use href="#i-info"/></svg>
+        <div>
+          <strong>这是什么工具？</strong>
+          <p>GB28181 接入链路的全科体检医生。模拟平台+设备，3分钟定位接入问题。</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 右侧内容区 -->
+  <main class="content">
+
+    <!-- Tab: 体检中心 -->
+    <section id="tab-sipsim" class="tab-content active">
+      <div class="tab-header">
+        <svg class="tab-icon" style="color:var(--primary)"><use href="#i-stethoscope"/></svg>
+        <div>
+          <h2>体检中心</h2>
+          <p class="tab-desc">模拟 GB28181 平台 + 摄像头，一键定位接入问题</p>
+        </div>
+      </div>
+
+      <!-- 一键体检横幅 -->
+      <div class="card hero-card" id="hero-card">
+        <div class="hero-content">
+          <div class="hero-text">
+            <h3>一键全自动体检</h3>
+            <p>自动启动模拟平台 → 注册模拟设备 → 全链路诊断（注册/保活/目录/点播/媒体流等12项）<br>不需要任何配置，30秒出报告</p>
+          </div>
+          <button class="btn btn-primary btn-lg" id="btn-quickstart" onclick="quickStart()">
+            <svg width="20" height="20"><use href="#i-rocket"/></svg> 一键体检
+          </button>
+        </div>
+      </div>
+
+      <!-- 智能状态提示 -->
+      <div class="card hidden" id="smart-hint-card">
+        <div class="smart-hint" id="smart-hint-body"></div>
+      </div>
+
+      <!-- 快速开始向导 -->
+      <div class="card" id="quick-start-card">
+        <div class="card-header">
+          <svg class="card-icon" style="color:var(--primary)"><use href="#i-list"/></svg>
+          <h3>手动操作（分步模式）</h3>
+        </div>
+        <div class="quick-guide">
+          <div class="guide-step" id="guide-step-1">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <strong>启动模拟平台</strong>
+              <p>点击下方「启动平台」，GBDoctor 会模拟一个 GB28181 上级平台</p>
+            </div>
+          </div>
+          <div class="guide-step" id="guide-step-2">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <strong>在摄像头上配置 SIP 指向本机</strong>
+              <p>摄像头网络设置中：SIP 服务器 IP = 本机 IP，端口 = 下方显示端口，服务器编码 = 下方编码</p>
+            </div>
+          </div>
+          <div class="guide-step" id="guide-step-3">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <strong>等待设备注册后点击体检</strong>
+              <p>设备注册成功后自动出现在「已注册设备」列表，点击体检即可全链路诊断</p>
+            </div>
+          </div>
+        </div>
+        <div class="guide-tip">
+          <svg width="16" height="16" style="color:var(--warn);flex-shrink:0"><use href="#i-info"/></svg>
+          <span>没有真摄像头？点上方「一键体检」或「注册模拟设备」即可用虚拟设备跑通全链路测试</span>
+        </div>
+      </div>
+
+      <!-- SIP 仿真配置 -->
+      <div class="card" id="sipsim-config">
+        <div class="card-header">
+          <svg class="card-icon"><use href="#i-antenna"/></svg>
+          <h3>SIP 平台配置</h3>
+        </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>监听地址</label>
+            <input type="text" id="sim-host" value="0.0.0.0" placeholder="0.0.0.0">
+          </div>
+          <div class="form-row">
+            <label>SIP 端口</label>
+            <input type="number" id="sim-port" value="5060" placeholder="5060">
+          </div>
+          <div class="form-row">
+            <label>服务器编码</label>
+            <input type="text" id="sim-server-id" value="34020000002000000001">
+          </div>
+          <div class="form-row">
+            <label>鉴权密码</label>
+            <input type="text" id="sim-password" value="12345678">
+          </div>
+          <div class="form-row">
+            <label>挑战算法</label>
+            <select id="sim-algorithm">
+              <option value="MD5">MD5</option>
+              <option value="SHA-256">SHA-256</option>
+              <option value="SM3">SM3</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>TCP 监听</label>
+            <label class="checkbox">
+              <input type="checkbox" id="sim-tcp"> 同时监听 TCP
+            </label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" id="btn-start-sipsim" onclick="startSipSim()">
+            <svg width="16" height="16"><use href="#i-rocket"/></svg> 启动平台
+          </button>
+          <button class="btn btn-danger hidden" id="btn-stop-sipsim" onclick="stopSipSim()">
+            <svg width="16" height="16"><use href="#i-stop"/></svg> 停止平台
+          </button>
+        </div>
+      </div>
+
+      <!-- 模拟设备控制 -->
+      <div class="card hidden" id="simcam-card">
+        <div class="card-header">
+          <svg class="card-icon"><use href="#i-camera"/></svg>
+          <h3>模拟 GB28181 设备</h3>
+        </div>
+        <p class="card-desc">没有真摄像头也能测！启动虚拟设备自动注册到上方模拟平台</p>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>设备编码</label>
+            <input type="text" id="cam-device-id" value="34020000001320000001">
+          </div>
+          <div class="form-row">
+            <label>鉴权密码</label>
+            <input type="text" id="cam-password" value="12345678">
+          </div>
+          <div class="form-row">
+            <label>自动心跳</label>
+            <label class="checkbox">
+              <input type="checkbox" id="cam-auto-keepalive" checked> 每 30 秒自动发送
+            </label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" id="btn-start-cam" onclick="startSimCam()">
+            <svg width="16" height="16"><use href="#i-camera"/></svg> 注册模拟设备
+          </button>
+          <button class="btn btn-danger hidden" id="btn-stop-cam" onclick="stopSimCam()">
+            <svg width="16" height="16"><use href="#i-stop"/></svg> 停止设备
+          </button>
+        </div>
+        <!-- 设备操作面板 -->
+        <div class="simcam-actions hidden" id="simcam-actions">
+          <div class="divider"></div>
+          <h4 class="subhead">设备操作（模拟真实设备行为）</h4>
+          <div class="btn-group">
+            <button class="btn btn-secondary" onclick="simCamKeepalive()">
+              <svg width="16" height="16"><use href="#i-heart-pulse"/></svg> 发送心跳
+            </button>
+            <button class="btn btn-secondary" onclick="simCamCatalog()">
+              <svg width="16" height="16"><use href="#i-list"/></svg> 回复目录
+            </button>
+            <button class="btn btn-secondary" onclick="simCamDeviceInfo()">
+              <svg width="16" height="16"><use href="#i-info"/></svg> 回复设备信息
+            </button>
+            <button class="btn btn-secondary" onclick="simCamRecordInfo()">
+              <svg width="16" height="16"><use href="#i-video"/></svg> 回复录像
+            </button>
+            <button class="btn btn-secondary" onclick="simCamAlarm()">
+              <svg width="16" height="16"><use href="#i-bell"/></svg> 发送报警
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 已注册设备列表 -->
+      <div class="card hidden" id="device-card">
+        <div class="card-header">
+          <svg class="card-icon"><use href="#i-camera"/></svg>
+          <h3>已注册设备</h3>
+        </div>
+        <div id="device-list" class="device-list">
+          <!-- 动态填充 -->
+        </div>
+      </div>
+
+      <!-- 注册排查面板 -->
+      <div class="card hidden" id="troubleshoot-card">
+        <div class="card-header">
+          <svg class="card-icon" style="color:var(--warn)"><use href="#i-search"/></svg>
+          <h3>设备注册不上来？</h3>
+        </div>
+        <p class="card-desc">点击下方按钮获取排查建议，帮你快速定位设备为什么注册不上</p>
+        <div class="form-actions">
+          <button class="btn btn-secondary" onclick="runTroubleshoot()">
+            <svg width="16" height="16"><use href="#i-search"/></svg> 获取排查建议
+          </button>
+        </div>
+        <div id="troubleshoot-result" class="hidden" style="margin-top:16px"></div>
+      </div>
+
+      <!-- 体检配置 -->
+      <div class="card hidden" id="check-config">
+        <div class="card-header">
+          <svg class="card-icon"><use href="#i-sliders"/></svg>
+          <h3>体检选项</h3>
+        </div>
+        <div class="checkbox-grid">
+          <label class="checkbox"><input type="checkbox" id="skip-catalog"> 跳过目录检测</label>
+          <label class="checkbox"><input type="checkbox" id="skip-invite"> 跳过点播检测</label>
+          <label class="checkbox"><input type="checkbox" id="skip-deviceinfo"> 跳过设备信息</label>
+          <label class="checkbox"><input type="checkbox" id="skip-ptz"> 跳过云台控制</label>
+          <label class="checkbox"><input type="checkbox" id="skip-alarm"> 跳过报警订阅</label>
+          <label class="checkbox"><input type="checkbox" id="skip-record"> 跳过录像检索</label>
+          <label class="checkbox"><input type="checkbox" id="skip-voice"> 跳过语音对讲</label>
+          <label class="checkbox"><input type="checkbox" id="skip-gb2022"> 跳过 2022 新标</label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab: 本机自检 -->
+    <section id="tab-selftest" class="tab-content">
+      <div class="tab-header">
+        <svg class="tab-icon" style="color:var(--primary)"><use href="#i-refresh"/></svg>
+        <div>
+          <h2>本机自检</h2>
+          <p class="tab-desc">模拟平台与模拟摄像头全链路回环测试，验证工具自身是否正常</p>
+        </div>
+      </div>
+      <div class="card">
+        <p class="card-desc">点击下方按钮执行本机回环自检，无需任何配置。模拟平台和模拟摄像头将在本机自动跑通全链路。</p>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="runSelftest()">
+            <svg width="16" height="16"><use href="#i-play"/></svg> 开始自检
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab: 平台侧体检 -->
+    <section id="tab-platform" class="tab-content">
+      <div class="tab-header">
+        <svg class="tab-icon" style="color:var(--primary)"><use href="#i-antenna"/></svg>
+        <div>
+          <h2>平台侧体检</h2>
+          <p class="tab-desc">模拟摄像头注册到真实上级平台，验证平台合规性</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <svg class="card-icon"><use href="#i-sliders"/></svg>
+          <h3>目标平台配置</h3>
+        </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>平台地址 *</label>
+            <input type="text" id="plat-server-addr" placeholder="192.168.1.100:5060">
+          </div>
+          <div class="form-row">
+            <label>平台编码</label>
+            <input type="text" id="plat-server-id" value="34020000002000000001">
+          </div>
+          <div class="form-row">
+            <label>设备编码</label>
+            <input type="text" id="plat-device-id" value="34020000001320000001">
+          </div>
+          <div class="form-row">
+            <label>鉴权密码</label>
+            <input type="text" id="plat-password" value="12345678">
+          </div>
+          <div class="form-row">
+            <label>传输协议</label>
+            <select id="plat-transport">
+              <option value="udp">UDP</option>
+              <option value="tcp">TCP</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>超时</label>
+            <input type="text" id="plat-timeout" value="15s" placeholder="15s">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="runPlatform()">
+            <svg width="16" height="16"><use href="#i-antenna"/></svg> 开始平台侧体检
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab: 抓包分析 -->
+    <section id="tab-pcap" class="tab-content">
+      <div class="tab-header">
+        <svg class="tab-icon" style="color:var(--primary)"><use href="#i-package"/></svg>
+        <div>
+          <h2>抓包分析</h2>
+          <p class="tab-desc">自动捕获体检过程中的 SIP 报文，或手动上传 pcap 文件离线分析</p>
+        </div>
+      </div>
+
+      <!-- 内置抓包 -->
+      <div class="card" id="live-capture-card">
+        <div class="card-header">
+          <svg class="card-icon"><use href="#i-search"/></svg>
+          <h3>自动抓包（推荐）</h3>
+        </div>
+        <p class="card-desc">体检过程中 GBDoctor 自动捕获所有经过的 SIP 报文（REGISTER/MESSAGE/INVITE 等），体检完成后可一键导出 pcap 文件，用 Wireshark 打开即可分析。</p>
+        <div class="capture-stats" id="capture-stats" style="display:none;margin-bottom:16px">
+          <div class="capture-stat">
+            <span class="stat-value" id="capture-count">0</span>
+            <span class="stat-label">报文数</span>
+          </div>
+          <div class="capture-stat">
+            <span class="stat-value" id="capture-in">0</span>
+            <span class="stat-label">入站</span>
+          </div>
+          <div class="capture-stat">
+            <span class="stat-value" id="capture-out">0</span>
+            <span class="stat-label">出站</span>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" id="btn-capture-refresh" onclick="refreshCaptureStats()">
+            <svg width="16" height="16"><use href="#i-refresh"/></svg> 刷新统计
+          </button>
+          <button class="btn btn-secondary" id="btn-capture-download" onclick="downloadLivePcap()">
+            <svg width="16" height="16"><use href="#i-download"/></svg> 下载 pcap
+          </button>
+        </div>
+      </div>
+
+      <!-- 手动上传 -->
+      <div class="card">
+        <div class="card-header">
+          <svg class="card-icon"><use href="#i-upload"/></svg>
+          <h3>手动上传 pcap 文件</h3>
+        </div>
+        <div class="upload-area" id="upload-area">
+          <div class="upload-icon-wrap">
+            <svg width="48" height="48" style="color:var(--gray-light)"><use href="#i-upload"/></svg>
+          </div>
+          <p>拖拽 pcap 文件到此处，或</p>
+          <label class="btn btn-secondary">
+            <svg width="16" height="16"><use href="#i-file"/></svg> 选择文件
+            <input type="file" id="pcap-file" accept=".pcap,.pcapng,.cap" onchange="uploadPcap(event)" hidden>
+          </label>
+        </div>
+        <div id="pcap-result" class="hidden"></div>
+      </div>
+    </section>
+
+    <!-- Tab: 网络诊断 -->
+    <section id="tab-netdiag" class="tab-content">
+      <div class="tab-header">
+        <svg class="tab-icon" style="color:var(--primary)"><use href="#i-globe"/></svg>
+        <div>
+          <h2>网络诊断</h2>
+          <p class="tab-desc">检测端口可达性、NAT 类型、防火墙等网络问题</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="form-grid">
+          <div class="form-row">
+            <label>目标 IP *</label>
+            <input type="text" id="netdiag-target" placeholder="192.168.1.100">
+          </div>
+          <div class="form-row">
+            <label>端口</label>
+            <input type="number" id="netdiag-port" value="5060">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="runNetdiag()">
+            <svg width="16" height="16"><use href="#i-search"/></svg> 开始诊断
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab: 历史报告 -->
+    <section id="tab-reports" class="tab-content">
+      <div class="tab-header">
+        <svg class="tab-icon" style="color:var(--primary)"><use href="#i-clipboard"/></svg>
+        <div>
+          <h2>历史报告</h2>
+          <p class="tab-desc">查看本次会话中生成的所有体检报告</p>
+        </div>
+      </div>
+      <div id="report-list" class="report-list">
+        <p class="empty-hint">暂无历史报告</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 底部日志面板 -->
+  <section class="log-panel" id="log-panel">
+    <div class="log-header">
+      <h3>
+        <svg width="16" height="16" style="color:#cba6f7"><use href="#i-clipboard"/></svg>
+        实时日志
+      </h3>
+      <div class="log-controls">
+        <button class="btn-mini" onclick="clearLog()">
+          <svg width="12" height="12"><use href="#i-trash"/></svg> 清空
+        </button>
+        <button class="btn-mini" id="log-toggle" onclick="toggleLog()">
+          <svg width="12" height="12" id="log-toggle-icon"><use href="#i-chevron-down"/></svg>
+          <span id="log-toggle-text">折叠</span>
+        </button>
+      </div>
+    </div>
+    <div class="log-content" id="log-content">
+      <div class="log-entry info">等待操作...</div>
+    </div>
+  </section>
+
+  <!-- 体检进度面板 -->
+  <section class="progress-panel hidden" id="progress-panel">
+    <div class="progress-header">
+      <h3>
+        <svg width="18" height="18" style="color:var(--primary)"><use href="#i-microscope"/></svg>
+        体检进度
+      </h3>
+      <span id="progress-score" class="progress-score"></span>
+    </div>
+    <div class="stage-progress" id="stage-progress">
+      <!-- 动态填充 12 个环节 -->
+    </div>
+  </section>
+
+</div>
+
+<!-- 报告弹窗 -->
+<div class="modal-overlay hidden" id="report-modal" onclick="closeReportModal(event)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3>
+        <svg width="18" height="18" style="color:var(--primary)"><use href="#i-clipboard"/></svg>
+        体检报告
+      </h3>
+      <button class="modal-close" onclick="closeReportModal()">
+        <svg width="20" height="20"><use href="#i-x"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="report-modal-body"></div>
+  </div>
+</div>
+
+<!-- 设备注册通知 -->
+<div class="toast-container" id="toast-container"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

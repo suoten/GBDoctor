@@ -1,0 +1,21 @@
+# 构建产物
+dist/
+release/
+*.exe
+*.syso.tmp
+
+# 内部文档（不公开：产品规划/内部测试报告等）
+01-GBDoctor-GB28181接入诊断工具-产品规划.md
+GBDoctor生产可用性深度测试报告.md
+docs-local/
+
+# 运行时日志
+gbdoctor.log
+
+# 临时目录
+tmp/
+
+# IDE
+.idea/
+.vscode/
+*.swp
