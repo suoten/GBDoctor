@@ -1,0 +1,863 @@
+# GBDoctor 内置规则库 V1.2
+# 55 条规则，覆盖 GB28181 接入 TOP 高频故障
+# 格式：声明式 YAML，与代码解耦
+
+# ===== 注册环节 (8 条) =====
+
+- rule_id: REG-401-AUTH-FAIL
+  category: register
+  severity: blocking
+  trigger:
+    condition: "auth_fail"
+  title: "注册鉴权失败"
+  evidence:
+    - "REGISTER 请求与 401 质询报文"
+  explain: >
+    设备发送了 REGISTER 请求但鉴权未通过。常见原因：
+    1. 密码错误（最常见）
+    2. Digest 算法不匹配（平台要求 MD5，设备用了 SHA-256 或 SM3）
+    3. nonce 过期或被重放
+    4. realm 不匹配
+  advice:
+    - "检查设备「平台接入」配置中的 SIP 密码是否与平台一致"
+    - "确认平台要求的鉴权算法（MD5/SHA-256/SM3），与设备配置匹配"
+    - "如果使用 2022 新标，检查是否需要 SM3 算法"
+  vendor_notes:
+    dahua: "配置路径：主菜单→网络→平台接入→GB28181→密码"
+    hikvision: "配置路径：配置→网络→高级配置→平台接入→密码"
+
+- rule_id: REG-401-TIMEOUT
+  category: register
+  severity: blocking
+  trigger:
+    condition: "timeout"
+  title: "注册无响应（超时）"
+  evidence:
+    - "REGISTER 请求已发出但平台无应答"
+  explain: >
+    设备发出了 REGISTER 请求但未收到平台应答。常见原因：
+    1. SIP 服务器 IP 或端口填错
+    2. 防火墙/安全组拦截了 5060 端口（UDP）
+    3. 设备与平台不在同一网段且无路由
+    4. 服务器未运行或端口被占用
+  advice:
+    - "检查设备「平台接入」配置中的 SIP 服务器 IP 和端口"
+    - "确认网络可达：ping 服务器 IP，或用 telnet 测试 5060 端口"
+    - "检查防火墙/安全组是否放行 UDP 5060"
+
+- rule_id: REG-NAT-MISMATCH
+  category: register
+  severity: warning
+  trigger:
+    condition: "nat"
+  title: "NAT 地址不匹配"
+  evidence:
+    - "Via 头 sent-by 地址与实际来源地址不一致"
+  explain: >
+    设备 Via 头中填写的地址与实际网络来源地址不同，
+    说明设备在 NAT 后面。如果平台直接回响应到 Via 地址，
+    设备可能收不到。常见于私网设备注册公网平台场景。
+  advice:
+    - "确认设备是否需要配置外网映射地址"
+    - "检查设备是否支持 rport 参数（RFC 3581）"
+    - "如设备在运营商级 NAT（100.64 段）后面，需联系运营商申请端口映射"
+
+- rule_id: REG-DEVICEID-INVALID
+  category: register
+  severity: blocking
+  trigger:
+    condition: "deviceid"
+  title: "设备国标编码不合规"
+  evidence:
+    - "REGISTER 请求 From 头中的 DeviceID"
+  explain: >
+    国标编码必须为 20 位纯数字。当前编码不符合要求，
+    多数平台会直接拒绝注册。
+  advice:
+    - "检查设备国标编码是否为 20 位"
+    - "第 1-8 位为行政区划码"
+    - "第 11-13 位为设备类型码（132=网络摄像机，131=视频通道）"
+
+- rule_id: REG-ALGORITHM-MISMATCH
+  category: register
+  severity: warning
+  trigger:
+    condition: "algorithm"
+  title: "鉴权算法非标准"
+  evidence:
+    - "Authorization 头中声明的算法"
+  explain: >
+    设备声明使用了非 MD5 算法。国标 2011/2016 版默认 MD5，
+    2022 版新增 SM3 支持。如果平台只支持 MD5 而设备用 SM3，
+    可能导致鉴权失败。
+  advice:
+    - "确认平台支持的鉴权算法版本"
+    - "如果对接老平台，将设备算法改为 MD5"
+    - "如果对接 2022 新标平台，检查 SM3 实现是否正确"
+
+- rule_id: REG-EXPIRES-TOO-LONG
+  category: register
+  severity: advice
+  trigger:
+    condition: "expires_too_long"
+  title: "注册有效期过长"
+  evidence:
+    - "REGISTER 请求中的 Expires 值"
+  explain: >
+    注册有效期超过 3600 秒。部分平台会在过期前主动注销设备，
+    过长的有效期可能导致平台认为设备已离线但实际上设备仍在。
+  advice:
+    - "将注册有效期设为 300-3600 秒之间"
+    - "推荐值为 3600 秒（1 小时）"
+
+- rule_id: REG-EXPIRES-TOO-SHORT
+  category: register
+  severity: warning
+  trigger:
+    condition: "expires_too_short"
+  title: "注册有效期过短"
+  evidence:
+    - "REGISTER 请求中的 Expires 值"
+  explain: >
+    注册有效期短于 60 秒。频繁注册会增加设备和平台负载，
+    在网络抖动时可能导致注册频繁失败。
+  advice:
+    - "将注册有效期设为至少 300 秒"
+    - "推荐值为 3600 秒（1 小时）"
+
+- rule_id: REG-DEREGISTER-UNEXPECTED
+  category: register
+  severity: warning
+  trigger:
+    condition: "deregister"
+  title: "设备意外注销"
+  evidence:
+    - "REGISTER Expires=0 报文"
+  explain: >
+    设备发送了 Expires=0 的 REGISTER 请求，主动注销。
+    如果不是人工操作，可能是设备重启或配置变更导致。
+  advice:
+    - "检查设备是否有定时重启策略"
+    - "确认设备配置是否被频繁修改"
+
+# ===== 心跳环节 (4 条) =====
+
+- rule_id: KA-STATUS-NOT-OK
+  category: keepalive
+  severity: blocking
+  trigger:
+    condition: "missing_status"
+  title: "心跳状态异常"
+  evidence:
+    - "Keepalive XML 中的 Status 字段"
+  explain: >
+    设备心跳报文中 Status 字段不是 OK，表示设备自身检测到异常。
+    可能是摄像头离线、网络断开、存储异常等。
+  advice:
+    - "检查设备硬件状态指示灯"
+    - "登录设备管理页面查看系统状态"
+    - "检查设备网络连接是否正常"
+
+- rule_id: KA-MISSING-SN
+  category: keepalive
+  severity: warning
+  trigger:
+    condition: "missing_sn"
+  title: "心跳报文缺少 SN 字段"
+  evidence:
+    - "Keepalive XML 报文"
+  explain: >
+    国标要求心跳报文必须包含 SN（序列号）字段。
+    缺少 SN 会导致平台无法判断心跳顺序和丢包。
+  advice:
+    - "检查设备固件版本是否为最新"
+    - "联系厂商确认心跳报文实现是否完整"
+
+- rule_id: KA-INTERVAL-TOO-LONG
+  category: keepalive
+  severity: warning
+  trigger:
+    condition: "interval_too_long"
+  title: "心跳周期过长"
+  evidence:
+    - "两次心跳的时间间隔"
+  explain: >
+    心跳间隔超过 120 秒。国标推荐 60 秒，过长的心跳周期
+    会导致平台不能及时发现设备离线。
+  advice:
+    - "将心跳周期设为 30-60 秒"
+    - "确认设备心跳定时器配置"
+
+- rule_id: KA-COUNT-MISMATCH
+  category: keepalive
+  severity: advice
+  trigger:
+    condition: "sn_mismatch"
+  title: "心跳 SN 序列号不连续"
+  evidence:
+    - "Keepalive SN 序列号"
+  explain: >
+    心跳 SN 序列号出现跳号，可能是设备重启或丢包导致。
+  advice:
+    - "检查网络稳定性"
+    - "确认设备无频繁重启"
+
+# ===== 目录环节 (4 条) =====
+
+- rule_id: CAT-001-EMPTY
+  category: catalog
+  severity: blocking
+  trigger:
+    condition: "empty"
+  title: "目录查询无应答或目录为空"
+  evidence:
+    - "Catalog 查询 MESSAGE 与应答"
+  explain: >
+    设备未返回任何通道信息。常见原因：
+    1. 设备不支持目录查询功能
+    2. 设备未配置通道信息
+    3. 设备目录推送开关未打开
+    4. 查询报文格式不兼容
+  advice:
+    - "检查设备「目录推送」开关是否打开"
+    - "确认设备已配置视频通道信息"
+    - "检查设备是否支持 Catalog 查询类型"
+  vendor_notes:
+    dahua: "配置路径：主菜单→网络→平台接入→GB28181→勾选「上报目录」"
+    hikvision: "配置路径：配置→网络→高级配置→平台接入→勾选「上报目录」"
+
+- rule_id: CAT-002-DEVICEID-CASE
+  category: catalog
+  severity: warning
+  trigger:
+    condition: "deviceid"
+  title: "目录通道编码不规范"
+  evidence:
+    - "Catalog 应答中的 Item 列表"
+  explain: >
+    国标编码必须是 20 位数字。返回的编码包含字母或长度不对，
+    多数上级平台会直接丢弃该通道，表现为「目录不全」或「通道不显示」。
+  advice:
+    - "检查设备/平台通道编码配置，确保为 20 位纯数字"
+    - "第 1-8 位为行政区划码，第 11-13 位为类型码（132=网络摄像机）"
+
+- rule_id: CAT-003-ERRCODE
+  category: catalog
+  severity: blocking
+  trigger:
+    condition: "errcode"
+  title: "目录查询返回错误码"
+  evidence:
+    - "Catalog 应答中的 ErrCode 字段"
+  explain: >
+    设备返回了错误码，表示目录查询失败。常见错误码：
+    100=设备无此能力，200=参数错误
+  advice:
+    - "确认设备是否支持 Catalog 查询"
+    - "检查查询报文格式是否正确"
+
+- rule_id: CAT-004-CHANNEL-OFFLINE
+  category: catalog
+  severity: advice
+  trigger:
+    condition: "channel_offline"
+  title: "目录中存在离线通道"
+  evidence:
+    - "Catalog 应答中 Item 的 Status 字段"
+  explain: >
+    目录中部分通道的 Status 为 OFF，表示该通道当前离线。
+    可能是摄像头断电、网络断开或通道未启用。
+  advice:
+    - "检查离线通道的设备是否正常供电"
+    - "确认通道设备网络连接"
+
+# ===== 点播/SDP 环节 (5 条) =====
+
+- rule_id: INV-001-NO-SSRC
+  category: invite
+  severity: warning
+  trigger:
+    condition: "sdp_no_ssrc"
+  title: "SDP 缺少 y= 字段（SSRC）"
+  evidence:
+    - "200 OK 中的 SDP 报文"
+  explain: >
+    国标在 SDP 中扩展了 y= 字段携带 SSRC。缺少该字段会导致
+    平台无法关联 RTP 流，可能出现「200 OK 但收不到流」的问题。
+  advice:
+    - "检查设备固件是否支持国标 SSRC 扩展"
+    - "确认设备 SDP 构造是否符合国标规范"
+
+- rule_id: INV-002-SSRC-LENGTH
+  category: invite
+  severity: warning
+  trigger:
+    condition: "sdp_ssrc_length"
+  title: "SSRC（y= 字段）长度不正确"
+  evidence:
+    - "SDP 中 y= 字段值"
+  explain: >
+    国标要求 SSRC 为 10 位数字。当前值长度不符合要求，
+    可能导致 RTP 流关联失败。
+  advice:
+    - "检查设备 SSRC 生成逻辑"
+    - "SSRC 应为 10 位纯数字"
+
+- rule_id: INV-003-PORT-ZERO
+  category: invite
+  severity: blocking
+  trigger:
+    condition: "sdp_port_zero"
+  title: "SDP 媒体端口为 0"
+  evidence:
+    - "SDP 中 m= 行"
+  explain: >
+    设备返回的媒体端口为 0，表示设备未分配媒体端口。
+    平台无法向该端口发送或接收 RTP 流。
+  advice:
+    - "检查设备媒体端口配置"
+    - "确认设备资源是否充足（并发拉流数限制）"
+
+- rule_id: INV-004-PRIVATE-IP
+  category: invite
+  severity: warning
+  trigger:
+    condition: "sdp_private_ip"
+  title: "SDP 中 c= 行为私网地址"
+  evidence:
+    - "SDP 中 c= IN IP4 xxx.xxx.xxx.xxx"
+  explain: >
+    设备在 SDP 中填写了私网 IP 地址。如果平台在公网或不同网段，
+    发送到该地址的 RTP 包将不可达，导致「200 OK 但收不到流」。
+  advice:
+    - "配置设备的外网映射地址"
+    - "检查设备「媒体地址」配置是否填了映射后的公网 IP"
+
+- rule_id: INV-005-REJECTED
+  category: invite
+  severity: blocking
+  trigger:
+    condition: "invite_rejected"
+  title: "INVITE 被拒绝"
+  evidence:
+    - "INVITE 请求与拒绝应答"
+  explain: >
+    设备拒绝了点播请求。常见拒绝原因：
+    486=忙（并发拉流数超限），503=服务不可用。
+  advice:
+    - "检查设备并发拉流数限制"
+    - "确认通道是否支持点播"
+    - "检查设备资源状态"
+
+# ===== RTP 媒体流环节 (5 条) =====
+
+- rule_id: RTP-001-HIGH-LOSS
+  category: rtp
+  severity: blocking
+  trigger:
+    condition: "loss"
+  title: "RTP 丢包率过高"
+  evidence:
+    - "RTP 序列号分析统计"
+  explain: >
+    RTP 流丢包率超过 5%，可能导致花屏、马赛克、画面卡顿。
+    常见原因：网络带宽不足、网络抖动、设备编码率过高。
+  advice:
+    - "检查网络带宽是否满足码率需求"
+    - "降低设备编码码率/分辨率"
+    - "检查网络是否存在丢包（交换机日志、网络监控）"
+
+- rule_id: RTP-002-STUTTER
+  category: rtp
+  severity: warning
+  trigger:
+    condition: "stutter"
+  title: "RTP 包率偏低（卡顿）"
+  evidence:
+    - "RTP 包率统计"
+  explain: >
+    RTP 包率过低，可能导致视频卡顿。正常视频流包率应在 25-50 包/秒。
+    包率偏低可能是编码器异常或网络拥塞。
+  advice:
+    - "检查设备编码参数是否正常"
+    - "确认网络带宽是否充足"
+    - "检查设备帧率设置"
+
+- rule_id: RTP-003-NO-STREAM
+  category: rtp
+  severity: blocking
+  trigger:
+    condition: "no_stream"
+  title: "INVITE 200 OK 但未收到 RTP 流"
+  evidence:
+    - "INVITE 应答 + RTP 接收日志"
+  explain: >
+    设备返回了 200 OK 但平台未收到任何 RTP 包。常见原因：
+    1. SDP 中媒体地址/端口不可达
+    2. 设备发送方向错误（sendrecv/sendonly 配置）
+    3. 防火墙拦截了 RTP 端口范围
+    4. 设备资源不足无法推流
+  advice:
+    - "检查 SDP 中的 IP 和端口是否可达"
+    - "确认防火墙放行了 RTP 端口范围（通常 10000-60000 UDP）"
+    - "检查设备是否正在推流（设备日志）"
+
+- rule_id: RTP-004-DUPLICATE
+  category: rtp
+  severity: warning
+  trigger:
+    condition: "duplicate"
+  title: "RTP 流存在重复包"
+  evidence:
+    - "RTP 序列号重复统计"
+  explain: >
+    检测到 RTP 序列号重复，可能是网络重传或设备发送逻辑异常。
+  advice:
+    - "检查网络是否存在重传"
+    - "确认设备 RTP 发送实现是否正确"
+
+- rule_id: RTP-005-DISORDER
+  category: rtp
+  severity: advice
+  trigger:
+    condition: "disorder"
+  title: "RTP 流存在乱序包"
+  evidence:
+    - "RTP 序列号乱序统计"
+  explain: >
+    检测到 RTP 包乱序到达，轻微乱序不影响播放，
+    严重乱序可能导致画面闪烁。
+  advice:
+    - "检查网络路由是否稳定"
+    - "确认无多路径传输"
+
+# ===== 时钟偏差 (2 条) =====
+
+- rule_id: CLK-001-OFFSET
+  category: clock
+  severity: warning
+  trigger:
+    condition: "offset"
+  title: "设备时间偏差过大"
+  evidence:
+    - "设备上报时间 vs 平台当前时间"
+  explain: >
+    设备时间与平台时间偏差超过 60 秒。国标要求偏差不超过 300 秒。
+    时间偏差可能导致：注册异常、录像时间错乱、报警时间不准。
+  advice:
+    - "配置设备 NTP 时间同步"
+    - "检查设备时区设置"
+    - "通过平台下发校时指令"
+
+- rule_id: CLK-002-SEVERE-OFFSET
+  category: clock
+  severity: blocking
+  trigger:
+    condition: "severe_offset"
+  title: "设备时间严重偏差"
+  evidence:
+    - "设备上报时间 vs 平台当前时间"
+  explain: >
+    设备时间偏差超过 5 分钟，可能导致注册失败、录像检索错误等严重问题。
+  advice:
+    - "立即配置设备 NTP 时间同步"
+    - "检查设备是否设置了正确的时间和时区"
+
+# ===== 设备信息 (3 条) =====
+
+- rule_id: DEV-001-NO-RESPONSE
+  category: deviceinfo
+  severity: warning
+  trigger:
+    condition: "no_response"
+  title: "DeviceInfo 查询无应答"
+  evidence:
+    - "DeviceInfo 查询 MESSAGE"
+  explain: >
+    设备未响应 DeviceInfo 查询。部分老设备不支持该查询类型。
+  advice:
+    - "检查设备固件版本是否支持 DeviceInfo 查询"
+    - "确认设备能力集是否包含该功能"
+
+- rule_id: DEV-002-EMPTY-FIELDS
+  category: deviceinfo
+  severity: warning
+  trigger:
+    condition: "empty_fields"
+  title: "DeviceInfo 应答关键字段为空"
+  evidence:
+    - "DeviceInfo 应答 XML"
+  explain: >
+    设备返回了 DeviceInfo 应答但厂商/型号/固件版本字段为空。
+    可能导致平台无法按厂商匹配修复建议。
+  advice:
+    - "检查设备配置是否填写了厂商信息"
+    - "联系厂商确认设备信息上报是否正确"
+
+- rule_id: DEV-003-FIRMWARE-OLD
+  category: deviceinfo
+  severity: advice
+  trigger:
+    condition: "firmware_old"
+  title: "设备固件版本过旧"
+  evidence:
+    - "DeviceInfo 应答中的 FirmwareVersion"
+  explain: >
+    设备固件版本较旧，可能存在已知 bug 或安全漏洞。
+  advice:
+    - "检查厂商官网是否有新版本固件"
+    - "升级前确认兼容性"
+
+# ===== PTZ (3 条) =====
+
+- rule_id: PTZ-001-NO-RESPONSE
+  category: ptz
+  severity: warning
+  trigger:
+    condition: "no_response"
+  title: "PTZ 控制无应答"
+  evidence:
+    - "DeviceControl MESSAGE"
+  explain: >
+    设备未响应 PTZ 控制指令。常见原因：
+    1. PTZ 控制指令格式错误
+    2. 被控通道不是 PTZ 通道
+    3. 设备不支持远程 PTZ
+  advice:
+    - "检查 PTZ 指令格式是否为 A50F01XX 格式"
+    - "确认目标通道支持云台控制"
+    - "检查控制优先级是否冲突"
+
+- rule_id: PTZ-002-BAD-FORMAT
+  category: ptz
+  severity: warning
+  trigger:
+    condition: "ptz_bad_prefix"
+  title: "PTZ 指令格式错误"
+  evidence:
+    - "PTZCmd 字段值"
+  explain: >
+    PTZ 指令应以 A5 开头、B1 结尾。当前指令格式不正确。
+  advice:
+    - "确认 PTZ 指令格式符合国标（A50F01...B1）"
+    - "检查指令生成逻辑"
+
+- rule_id: PTZ-003-CHECKSUM-ERROR
+  category: ptz
+  severity: warning
+  trigger:
+    condition: "ptz_bad_checksum"
+  title: "PTZ 指令校验位错误"
+  evidence:
+    - "PTZCmd 末尾字节"
+  explain: >
+    PTZ 指令末尾应为 B1（校验位）。当前校验位不正确，
+    设备可能拒绝执行。
+  advice:
+    - "检查 PTZ 指令校验位计算逻辑"
+    - "确认指令编码无误"
+
+# ===== 报警 (3 条) =====
+
+- rule_id: ALM-001-SUBSCRIBE-FAIL
+  category: alarm
+  severity: warning
+  trigger:
+    condition: "subscribe_fail"
+  title: "报警订阅失败"
+  evidence:
+    - "Subscribe MESSAGE 及应答"
+  explain: >
+    设备不接受报警订阅。部分设备不支持订阅式报警，
+    只能通过轮询方式查询报警状态。
+  advice:
+    - "确认设备是否支持订阅式报警"
+    - "检查订阅报文格式是否正确"
+
+- rule_id: ALM-002-NO-ALARM-TIME
+  category: alarm
+  severity: warning
+  trigger:
+    condition: "no_alarm_time"
+  title: "报警通知缺少 AlarmTime 字段"
+  evidence:
+    - "Alarm 通知 XML"
+  explain: >
+    报警通知缺少 AlarmTime，平台无法确定报警发生时间。
+  advice:
+    - "检查设备报警上报实现"
+    - "确认设备固件是否为最新"
+
+- rule_id: ALM-003-BAD-METHOD
+  category: alarm
+  severity: advice
+  trigger:
+    condition: "bad_alarm_method"
+  title: "报警方式编码不规范"
+  evidence:
+    - "AlarmMethod 字段值"
+  explain: >
+    AlarmMethod 应为数字编码（1=电话,2=短信,3=声光,4=录像,5=移动侦测等）。
+    当前值不在标准范围内。
+  advice:
+    - "检查设备报警方式编码配置"
+    - "确认符合国标定义"
+
+# ===== 录像 (3 条) =====
+
+- rule_id: REC-001-NO-RECORD
+  category: record
+  severity: advice
+  trigger:
+    condition: "no_record"
+  title: "录像检索无结果"
+  evidence:
+    - "RecordInfo 查询及应答"
+  explain: >
+    在指定时间范围内未检索到录像。可能是设备未开启录像，
+    或时间范围选择错误。
+  advice:
+    - "确认设备录像计划配置"
+    - "检查检索时间范围是否包含录像时间段"
+    - "确认设备存储介质正常"
+
+- rule_id: REC-002-TIMEOUT
+  category: record
+  severity: warning
+  trigger:
+    condition: "timeout"
+  title: "录像检索超时"
+  evidence:
+    - "RecordInfo 查询无应答"
+  explain: >
+    设备未在规定时间内响应录像检索查询。
+  advice:
+    - "检查设备是否支持 RecordInfo 查询"
+    - "确认设备录像功能已开启"
+
+- rule_id: REC-003-NO-FILEPATH
+  category: record
+  severity: advice
+  trigger:
+    condition: "no_filepath"
+  title: "录像记录缺少 FilePath"
+  evidence:
+    - "RecordInfo Item 中的 FilePath"
+  explain: >
+    录像记录缺少文件路径，平台可能无法播放或下载录像。
+  advice:
+    - "检查设备录像存储配置"
+    - "确认录像文件路径格式"
+
+# ===== 语音对讲 (2 条) =====
+
+- rule_id: VOICE-001-REJECT
+  category: voice
+  severity: warning
+  trigger:
+    condition: "voice_reject"
+  title: "语音对讲被拒绝"
+  evidence:
+    - "语音对讲 INVITE 及拒绝应答"
+  explain: >
+    设备拒绝了语音对讲请求。部分设备不支持语音对讲功能。
+  advice:
+    - "确认设备支持语音对讲"
+    - "检查音频通道配置"
+    - "确认设备音频编码格式"
+
+- rule_id: VOICE-002-NOT-SENDRECV
+  category: voice
+  severity: warning
+  trigger:
+    condition: "voice_not_sendrecv"
+  title: "语音对讲 SDP 缺少双向音频属性"
+  evidence:
+    - "语音对讲 SDP 中 a= 属性"
+  explain: >
+    语音对讲要求 SDP 中包含 a=sendrecv 表示双向音频。
+    缺少该属性可能导致单向音频（只能听或只能说）。
+  advice:
+    - "检查设备语音对讲 SDP 构造"
+    - "确认设备音频方向配置为双向"
+
+# ===== 级联 (2 条) =====
+
+- rule_id: CAS-001-XML-MISMATCH
+  category: cascade
+  severity: blocking
+  trigger:
+    condition: "xml_mismatch"
+  title: "级联 XML 实现差异"
+  evidence:
+    - "A 平台与 B 平台目录交互报文"
+  explain: >
+    上下级平台之间的 XML 实现存在差异，常见于字段缺失、
+    大小写不一致、编码格式不同。这是级联不通的最常见原因。
+  advice:
+    - "对比双方 XML 报文差异"
+    - "确认双方支持的国标版本是否一致"
+    - "检查虚拟组织/业务分组处理逻辑是否一致"
+
+- rule_id: CAS-002-REG-FAIL
+  category: cascade
+  severity: blocking
+  trigger:
+    condition: "cascade_reg_fail"
+  title: "级联注册失败"
+  evidence:
+    - "级联 REGISTER 请求及应答"
+  explain: >
+    下级平台无法注册到上级平台，级联链路阻断。
+    常见原因：鉴权配置不一致、编码不匹配、网络不通。
+  advice:
+    - "检查级联双方鉴权密码"
+    - "确认双方编码配置匹配"
+    - "检查网络连通性"
+
+# ===== 2022 新标 (4 条) =====
+
+- rule_id: GB2022-001-CERT-FAIL
+  category: gb2022
+  severity: blocking
+  trigger:
+    condition: "cert_fail"
+  title: "35114 数字证书认证失败"
+  evidence:
+    - "证书协商报文"
+  explain: >
+    GB/T 28181-2022 引入了 35114 数字证书认证体系。
+    证书认证失败常见原因：证书过期、CA 不受信、证书链不完整。
+  advice:
+    - "检查设备数字证书是否过期"
+    - "确认平台 CA 证书库是否包含设备证书签发 CA"
+    - "检查证书链是否完整"
+
+- rule_id: GB2022-002-SM4-FAIL
+  category: gb2022
+  severity: blocking
+  trigger:
+    condition: "sm4_fail"
+  title: "SM4 媒体流加密协商失败"
+  evidence:
+    - "加密流 INVITE/SDP 协商报文"
+  explain: >
+    2022 新标引入 SM4 国密加密媒体流。协商失败常见原因：
+    密钥分发流程错误、设备不支持 SM4、加密参数不匹配。
+  advice:
+    - "确认设备固件支持 SM4 加密"
+    - "检查密钥分发（35114）流程配置"
+    - "确认 SDP 中加密参数协商正确"
+
+- rule_id: GB2022-003-NO-SM3
+  category: gb2022
+  severity: advice
+  trigger:
+    condition: "no_sm3"
+  title: "设备不支持 SM3 国密鉴权"
+  evidence:
+    - "REGISTER Authorization 头"
+  explain: >
+    2022 新标引入 SM3 国密算法。当前设备仅使用 MD5，
+    对接 2022 版平台可能需要升级。
+  advice:
+    - "检查设备固件是否支持 SM3"
+    - "如对接 2022 版平台，考虑升级固件"
+
+- rule_id: GB2022-004-NO-SM4
+  category: gb2022
+  severity: warning
+  trigger:
+    condition: "no_sm4"
+  title: "设备不支持 SM4 媒体流加密"
+  evidence:
+    - "SDP 中无加密参数"
+  explain: >
+    2022 新标引入 SM4 国密加密媒体流。当前设备 SDP 中
+    未包含加密参数，无法加密传输媒体流。
+  advice:
+    - "检查设备是否配置了媒体流加密"
+    - "确认设备固件支持 SM4"
+
+# ===== 网络诊断 (3 条) =====
+
+- rule_id: NET-001-PORT-BLOCKED
+  category: network
+  severity: blocking
+  trigger:
+    condition: "port_blocked"
+  title: "SIP 端口不可达"
+  evidence:
+    - "端口探测结果"
+  explain: >
+    SIP 5060 端口（UDP）不可达，设备无法向平台注册。
+    常见原因：防火墙拦截、安全组未放行、服务器未监听。
+  advice:
+    - "检查防火墙/安全组是否放行 UDP 5060"
+    - "确认 SIP 服务器进程已启动并监听"
+    - "检查端口是否被其他程序占用"
+
+- rule_id: NET-002-NAT-TYPE
+  category: network
+  severity: warning
+  trigger:
+    condition: "nat_type"
+  title: "NAT 类型不兼容"
+  evidence:
+    - "NAT 类型探测结果"
+  explain: >
+    设备所在网络的 NAT 类型可能导致注册失败。
+    对称型 NAT（Symmetric NAT）最难穿透。
+  advice:
+    - "如设备在运营商级 NAT（CGN）后面，需联系运营商"
+    - "考虑配置端口映射或使用静态 NAT"
+    - "检查设备是否支持 rport 参数"
+
+- rule_id: NET-003-RTP-RANGE
+  category: network
+  severity: warning
+  trigger:
+    condition: "rtp_range"
+  title: "RTP 端口范围未放行"
+  evidence:
+    - "RTP 端口探测结果"
+  explain: >
+    RTP 媒体流端口范围（通常 10000-60000 UDP）被防火墙拦截，
+    导致 INVITE 200 OK 但收不到流。
+  advice:
+    - "防火墙放行 RTP 端口范围 UDP 10000-60000"
+    - "检查设备 RTP 端口范围配置"
+    - "如使用 TCP 方式拉流可绕过 UDP RTP 端口问题"
+
+# ===== 兼容性 (2 条) =====
+
+- rule_id: COMPAT-001-VERSION-MISMATCH
+  category: gb2022
+  severity: warning
+  trigger:
+    condition: "version_mismatch"
+  title: "设备与平台国标版本不匹配"
+  evidence:
+    - "设备鉴权算法 vs 平台鉴权算法"
+  explain: >
+    设备使用的国标版本与平台不一致。2011 版仅支持 MD5，
+    2016 版新增 SHA-256，2022 版新增 SM3/SM4/35114。
+    版本不匹配可能导致鉴权失败或功能缺失。
+  advice:
+    - "升级设备固件以匹配平台版本"
+    - "或调整平台算法配置以兼容设备版本"
+
+- rule_id: COMPAT-002-ENCODING
+  category: gb2022
+  severity: advice
+  trigger:
+    condition: "encoding_diff"
+  title: "音视频编码版本差异"
+  evidence:
+    - "SDP 中编码类型"
+  explain: >
+    2022 版新增 SVAC 和 OPUS 编码支持。如设备使用这些编码，
+    老（2011/2016）平台可能无法解码。
+  advice:
+    - "确认平台支持设备使用的编码格式"
+    - "如不确定，使用 H.264 + G.711 兼容性最好"

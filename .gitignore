@@ -1,0 +1,16 @@
+# 构建产物
+dist/
+release/
+*.exe
+*.syso.tmp
+
+# 运行时日志
+gbdoctor.log
+
+# 临时目录
+tmp/
+
+# IDE
+.idea/
+.vscode/
+*.swp
