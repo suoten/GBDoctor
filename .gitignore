@@ -9,6 +9,11 @@ release/
 GBDoctor生产可用性深度测试报告.md
 docs-local/
 
+# 宣传视频工具产物（非本项目代码）
+.showreel/
+showreel.yaml
+promo.mp4
+
 # 运行时日志
 gbdoctor.log
 

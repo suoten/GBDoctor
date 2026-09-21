@@ -409,7 +409,13 @@ func (e *Engine) checkCatalog() *StageResult {
 
 	select {
 	case fact := <-catalogCh:
-		result.Facts = append(result.Facts, fmt.Sprintf("目录查询返回 %d 个通道", len(fact.Items)))
+		sumNum := 0
+		if fact.SumNum != "" {
+			if n, err := strconv.Atoi(fact.SumNum); err == nil {
+				sumNum = n
+			}
+		}
+		result.Facts = append(result.Facts, fmt.Sprintf("目录查询返回 %d 个通道（设备自报 SumNum=%s）", len(fact.Items), fact.SumNum))
 		if e.ruleEngine != nil {
 			result.Issues = append(result.Issues, e.ruleEngine.EvaluateCatalog(fact)...)
 		}
@@ -422,13 +428,21 @@ func (e *Engine) checkCatalog() *StageResult {
 		}
 		result.Passed = len(fact.Items) > 0 && fact.ErrCode == ""
 		if len(fact.Items) == 0 {
+			title := "目录为空"
+			explain := "设备返回的目录为空，可能未配置通道或目录推送未开启。"
+			if sumNum > 0 {
+				// 设备声称有 N 个通道但应答里一个 <Item> 都没有：
+				// 通道存在，但编码不合规被平台过滤，或分包/SN 配对异常。
+				title = "目录条目缺失（SumNum 不符）"
+				explain = fmt.Sprintf("设备自报共有 %d 个通道，但目录应答中未携带任何 <Item> 条目。常见原因：通道编码 ID 不合规（非 20 位/类型码错误）被平台过滤；目录分包后剩余分片未送达；应答 SN 与查询 SN 未配对。", sumNum)
+			}
 			result.Issues = append(result.Issues, sip.Issue{
 				RuleID:   "CAT-NO-ITEMS",
 				Category: sip.StageCatalog,
 				Severity: sip.SeverityBlocking,
-				Title:    "目录为空",
-				Explain:  "设备返回的目录为空，可能未配置通道或目录推送未开启。",
-				Advice:   []string{"检查设备目录推送配置", "确认设备已配置视频通道"},
+				Title:    title,
+				Explain:  explain,
+				Advice:   []string{"逐条核对 NVR 上通道的国标编码（20 位、类型码 131/132 等）", "检查 NVR 视频通道共享/目录推送设置", "增大目录分包间隔或检查网络丢包（UDP 信令）"},
 			})
 		}
 	case <-time.After(timeout):

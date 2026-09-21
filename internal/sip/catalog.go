@@ -34,6 +34,7 @@ type CatalogFact struct {
 	DeviceID string
 	Source   string
 	SN       string
+	SumNum   string
 	Items    []CatalogItem
 	ErrCode  string
 	ErrMSg   string
@@ -66,6 +67,7 @@ func ParseCatalogResponse(body string) CatalogFact {
 	}
 	fact.SN = XMLTagValue(body, "SN")
 	fact.DeviceID = XMLTagValue(body, "DeviceID")
+	fact.SumNum = XMLTagValue(body, "SumNum")
 	fact.ErrCode = XMLTagValue(body, "ErrCode")
 	fact.ErrMSg = XMLTagValue(body, "ErrMSg")
 
