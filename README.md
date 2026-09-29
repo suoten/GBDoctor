@@ -299,15 +299,6 @@ GBDoctor/
 - **[PyGBSentry](https://github.com/suoten/PyGBSentry)**（[Gitee](https://gitee.com/suoten/PyGBSentry)）— 开箱即用的国标（GB/T 28181-2022）视频管理平台：纯 Python 自研 SIP 栈，FastAPI + Vue 3 + ZLMediaKit，支持设备接入、级联、预览与回放。
 - 两者互为补充：**PyGBSentry** 负责把设备“接上来、管得好”，**GBDoctor** 负责在接不上、画面有问题时快速定位“为什么”。平台接入不顺畅？用 GBDoctor 体检一下就知道卡在哪一环。
 
-**🧰 同一作者的其他开源项目**
-
-| 项目 | 说明 | 仓库 |
-|------|------|------|
-| **ProtoForge** | 零硬件模拟 Modbus/S7/OPC-UA/BACnet/GB28181 等 28 种协议的设备模拟器，测试上位机与网关通信 | [Gitee](https://gitee.com/suoten/ProtoForge) · [GitHub](https://github.com/suoten/ProtoForge) |
-| **EdgeLiteGateway** | 开源边缘 AI 网关（Python 版）：13 种工业协议 + ONNX 推理引擎，10 分钟 Docker 部署 | [GitHub](https://github.com/suoten/EdgeLiteGateway) |
-| **EdgeLiteGateway-Go** | 工业边缘 AI 网关 Go 版：单二进制部署，附 Linux amd64/arm64/armv7 预编译包 | [GitHub](https://github.com/suoten/EdgeLiteGateway-Go) |
-| **dbbridge** | 零依赖数据库迁移与 SQL 转换工具，23 种数据库互转，单文件双击即用 | [GitHub](https://github.com/suoten/dbbridge) |
-
 ## English Documentation
 
 ### What is GBDoctor
@@ -560,15 +551,6 @@ gbdoctor check -device-id 34020000001320000001  # Specify device
 
 - **[PyGBSentry](https://github.com/suoten/PyGBSentry)** ([Gitee](https://gitee.com/suoten/PyGBSentry)) — A ready-to-run GB/T 28181-2022 video management platform: pure-Python SIP stack, FastAPI + Vue 3 + ZLMediaKit.
 - They complement each other: **PyGBSentry** connects and manages your devices, while **GBDoctor** tells you *why* something fails when it does. Access not working? Run a GBDoctor checkup to find the broken stage.
-
-**🧰 Other Open-Source Projects by the Same Author**
-
-| Project | Description | Repos |
-|---------|-------------|-------|
-| **ProtoForge** | Zero-hardware simulator for 28 protocols (Modbus/S7/OPC-UA/BACnet/GB28181…), for testing master software and gateways | [Gitee](https://gitee.com/suoten/ProtoForge) · [GitHub](https://github.com/suoten/ProtoForge) |
-| **EdgeLiteGateway** | Open-source edge AI gateway (Python): 13 industrial protocols + ONNX inference, 10-minute Docker deployment | [GitHub](https://github.com/suoten/EdgeLiteGateway) |
-| **EdgeLiteGateway-Go** | Edge AI gateway in Go: single-binary deployment with prebuilt Linux amd64/arm64/armv7 packages | [GitHub](https://github.com/suoten/EdgeLiteGateway-Go) |
-| **dbbridge** | Zero-dependency database migration & SQL conversion tool, 23 databases, single-file portable | [GitHub](https://github.com/suoten/dbbridge) |
 
 ### License
 
