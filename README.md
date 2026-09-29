@@ -294,6 +294,11 @@ GBDoctor/
 
 ---
 
+### 关联项目
+
+- **[PyGBSentry](https://github.com/suoten/PyGBSentry)**（[Gitee](https://gitee.com/suoten/PyGBSentry)）— 开箱即用的国标（GB/T 28181-2022）视频管理平台：纯 Python 自研 SIP 栈，FastAPI + Vue 3 + ZLMediaKit，支持设备接入、级联、预览与回放。
+- 两者互为补充：**PyGBSentry** 负责把设备“接上来、管得好”，**GBDoctor** 负责在接不上、画面有问题时快速定位“为什么”。平台接入不顺畅？用 GBDoctor 体检一下就知道卡在哪一环。
+
 ## English Documentation
 
 ### What is GBDoctor
@@ -541,6 +546,11 @@ gbdoctor check -device-id 34020000001320000001  # Specify device
 - **Declarative rule engine**: 53+ rules (YAML), decoupled from code, continuously growing
 - **Stage-by-stage engine**: Register passes → test catalog; catalog passes → test invite — tells you exactly which stage fails
 - **Evidence chain**: Each issue includes raw packet + timestamp + SHA-256 fingerprint
+
+### Related Projects
+
+- **[PyGBSentry](https://github.com/suoten/PyGBSentry)** ([Gitee](https://gitee.com/suoten/PyGBSentry)) — A ready-to-run GB/T 28181-2022 video management platform: pure-Python SIP stack, FastAPI + Vue 3 + ZLMediaKit.
+- They complement each other: **PyGBSentry** connects and manages your devices, while **GBDoctor** tells you *why* something fails when it does. Access not working? Run a GBDoctor checkup to find the broken stage.
 
 ### License
 
